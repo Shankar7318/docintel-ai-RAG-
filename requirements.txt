@@ -1,24 +1,25 @@
-# LangChain v0.x compatible versions
-langchain==0.1.16
-langchain-community==0.0.36
-langchain-core==0.1.48
-langsmith==0.1.17
-langchain-google-genai==0.0.11
-
-# Embeddings and Models
-sentence-transformers==5.2.0
-huggingface-hub==0.23.0
-google-generativeai==0.4.1  # Changed from 0.3.2 to 0.4.1
-
-# Vector Store
-chromadb==0.4.22
-
-# PDF Processing
-pypdf2==3.0.1
+# Core backend
+fastapi==0.105.2
+uvicorn[standard]==0.23.2
+python-dotenv==1.0.1
 python-multipart==0.0.6
-
-# Backend
-fastapi==0.104.1
-uvicorn==0.24.0
 pydantic==2.5.0
 pydantic-settings==2.1.0
+
+# LangChain 0.2+ compatible
+langchain==0.2.43
+langchain-chroma==0.1.9
+langchain-huggingface==1.2.0
+langchain-text-splitters==0.0.15
+langchain-community==0.3.0
+
+# Embeddings & models (CPU-only, prebuilt wheels)
+sentence-transformers==2.2.2
+transformers==4.41.0
+torch>=2.1.0,<2.2.0  # CPU or GPU, prebuilt wheel
+
+# Vector Store
+chroma-db==0.4.28
+
+# PDF processing
+pypdf2==3.0.1
