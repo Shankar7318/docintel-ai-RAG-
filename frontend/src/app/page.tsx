@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Upload, FileText, Brain, Send, Loader2, X, CheckCircle, HelpCircle, BookOpen, Search, Zap, History, Download, Highlighter, FileArchive, Eye, ChevronRight, ChevronLeft, Layers, MessageSquare } from 'lucide-react';
 
-const API_URL = "http://127.0.0.1:8001";
+const API_URL = "http://localhost:8000";
 
 export default function Home() {
   const [file, setFile] = useState(null);
@@ -45,17 +45,37 @@ export default function Home() {
   }, [chatHistory, streamingAnswer]);
 
   const checkApiHealth = async () => {
-    try {
-      const response = await fetch(`${API_URL}/health`);
-      if (response.ok) {
-        setApiStatus('healthy');
-      } else {
-        setApiStatus('unhealthy');
+  try {
+    console.log('🩺 Checking API health at:', `${API_URL}/health`);
+    const response = await fetch(`${API_URL}/health`, {
+      mode: 'cors',
+      headers: {
+        'Accept': 'application/json',
       }
-    } catch {
+    });
+    
+    console.log('🩺 Response status:', response.status);
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log('🩺 API is healthy:', data);
+      setApiStatus('healthy');
+    } else {
+      console.error('🩺 API responded with error:', response.status);
       setApiStatus('unhealthy');
     }
-  };
+  } catch (error) {
+   console.error('🩺 Cannot connect to API:', {
+      message: error.message,
+      name: error.name,
+      stack: error.stack
+    });
+    setApiStatus('unhealthy');
+    
+    // Show helpful error message
+    alert(`Cannot connect to backend at ${API_URL}\n\nPlease ensure:\n1. Backend is running\n2. No other app is using port 8001\n3. Try switching to port 8000`);
+  }
+};
 
   const loadSessions = async () => {
     try {
@@ -84,15 +104,27 @@ export default function Home() {
       setFileName(selectedFile.name);
     }
   };
+const handleUpload = async () => {
+  if (!file) return;
 
-  const handleUpload = async () => {
-    if (!file) return;
+  setIsUploading(true);
+  setUploadProgress(0);
+  
+  const formData = new FormData();
+  formData.append('file', file);
 
-    setIsUploading(true);
-    setUploadProgress(0);
+  console.log('📤 Uploading file:', file.name);
+  console.log('🌐 API URL:', API_URL);
+
+  try {
+    // First test if backend is reachable
+    console.log('🔍 Testing backend connection...');
+    const healthCheck = await fetch(`${API_URL}/health`);
+    console.log('🔍 Health check status:', healthCheck.status);
     
-    const formData = new FormData();
-    formData.append('file', file);
+    if (!healthCheck.ok) {
+      throw new Error(`Backend not responding. Status: ${healthCheck.status}`);
+    }
 
     const progressInterval = setInterval(() => {
       setUploadProgress(prev => {
@@ -104,44 +136,50 @@ export default function Home() {
       });
     }, 200);
 
-    try {
-      const response = await fetch(`${API_URL}/upload`, {
-        method: 'POST',
-        body: formData,
-      });
+    console.log('🚀 Sending upload request...');
+    const response = await fetch(`${API_URL}/upload`, {
+      method: 'POST',
+      body: formData,
+    });
 
-      clearInterval(progressInterval);
-      setUploadProgress(100);
+    clearInterval(progressInterval);
+    setUploadProgress(100);
 
-      if (response.ok) {
-        const data = await response.json();
-        setUploaded(true);
-        setFileName(file.name);
-        setChatHistory([]);
-        setAnswer('');
-        setQuestion('');
-        setSources([]);
-        setSessionId(data.session_id);
-        setHighlights([]);
-        
-        // Load sessions list
-        await loadSessions();
-        
-        // Show success message
-        setTimeout(() => {
-          setUploadProgress(0);
-        }, 1000);
-      } else {
-        const error = await response.json();
-        throw new Error(error.detail || 'Upload failed');
-      }
-    } catch (error) {
-      alert(`Error uploading document: ${error.message}`);
-    } finally {
-      setIsUploading(false);
-      setTimeout(() => setUploadProgress(0), 1000);
+    console.log('📥 Response status:', response.status);
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log('✅ Upload successful:', data);
+      
+      setUploaded(true);
+      setFileName(file.name);
+      setChatHistory([]);
+      setAnswer('');
+      setQuestion('');
+      setSources([]);
+      setSessionId(data.session_id);
+      setHighlights([]);
+      
+      // Load sessions list
+      await loadSessions();
+      
+      // Show success message
+      setTimeout(() => {
+        setUploadProgress(0);
+      }, 1000);
+    } else {
+      const errorText = await response.text();
+      console.error('❌ Upload failed:', errorText);
+      throw new Error(`Upload failed: ${errorText}`);
     }
-  };
+  } catch (error) {
+    console.error('❌ Upload error:', error);
+    alert(`Error uploading document: ${error.message}\n\nPlease ensure the backend server is running on ${API_URL}`);
+  } finally {
+    setIsUploading(false);
+    setTimeout(() => setUploadProgress(0), 1000);
+  }
+};
 
   const handleQuery = async () => {
     if (!question.trim() || !sessionId) return;

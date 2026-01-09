@@ -1,15 +1,17 @@
-version: '3.8'
 
 services:
   backend:
+    container_name: rag-backend
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: rag-backend
     ports:
       - "8000:8000"
     env_file:
       - ./backend/.env
+    environment:
+      - FRONTEND_URL=http://frontend:3000
+      - CORS_ORIGINS=http://frontend:3000,http://localhost:3000
     volumes:
       - chroma_data:/app/chroma_db
       - uploads_data:/app/uploads
@@ -24,14 +26,17 @@ services:
       - app-network
 
   frontend:
+    container_name: rag-frontend
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: rag-frontend
+      args:
+        - VITE_API_URL=http://backend:8000
     ports:
-      - "3000:3000"
+     - "3001:3001"
+
     environment:
-      - NEXT_PUBLIC_API_URL=http://backend:8000
+      - VITE_API_URL=http://backend:8000
     depends_on:
       backend:
         condition: service_healthy
